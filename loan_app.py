@@ -2,19 +2,14 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 
-# --- 1. ページ設定とスタイル（これまでのアプリと統一） ---
+# --- 1. ページ設定とスタイル ---
 st.set_page_config(page_title="AI住宅ローン借り換え診断", layout="centered")
 
 hide_st_style = """
     <style>
     header[data-testid="stHeader"] { visibility: hidden; display: none; }
     footer { visibility: hidden; }
-    .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 7rem !important;
-    }
-    h1 { margin-top: 0px !important; }
-    /* 診断カードのデザイン */
+    .block-container { padding-top: 2rem !important; padding-bottom: 7rem !important; }
     .result-card {
         background-color: #ffffff;
         padding: 20px;
@@ -23,11 +18,7 @@ hide_st_style = """
         text-align: center;
         margin: 10px 0;
     }
-    .savings-amount {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #28a745;
-    }
+    .savings-amount { font-size: 2.5rem; font-weight: bold; color: #28a745; }
     </style>
 """
 st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -41,9 +32,7 @@ def calculate_monthly_payment(principal, annual_interest_rate, months):
 
 # --- 3. メイン画面 ---
 st.title("🏦 AI住宅ローン借り換え診断")
-st.caption("現在のローンと新しい条件を比較し、削減できる金額を算出します。")
 
-# 入力フォーム
 with st.expander("📝 現在のローンの条件を入力", expanded=True):
     col1, col2 = st.columns(2)
     with col1:
@@ -60,29 +49,29 @@ with st.expander("✨ 借り換え後の条件を入力", expanded=True):
     with col4:
         costs = st.number_input("諸費用（手数料など） (万円)", min_value=0, max_value=500, value=60)
 
-# --- 4. 診断ロジック ---
-# 現在の条件
-current_total_payment = current_monthly * remaining_months
-current_total_interest = current_total_payment - (current_balance * 10000)
-
-# 借り換え後の条件
-new_total_payment_pure = new_monthly * remaining_months
-new_total_interest = new_total_payment_pure - (current_balance * 10000)
-new_total_payment_with_costs = new_total_payment_pure + (costs * 10000)
-
-# 削減額
-monthly_savings = current_monthly - new_monthly
-total_savings = current_total_payment - new_total_payment_with_costs
-
-# --- 5. 診断結果の表示 ---
+# --- 4. 診断実行ボタン ---
+st.write("")
 if st.button("📊 借り換えメリットを診断する", use_container_width=True):
+    # ボタンが押されてから計算を開始する（NameErrorを防ぐ）
+    current_monthly = calculate_monthly_payment(current_balance * 10000, current_rate, remaining_months)
+    new_monthly = calculate_monthly_payment(current_balance * 10000, new_rate, remaining_months)
+    
+    current_total_payment = current_monthly * remaining_months
+    current_total_interest = current_total_payment - (current_balance * 10000)
+    
+    new_total_payment_pure = new_monthly * remaining_months
+    new_total_interest = new_total_payment_pure - (current_balance * 10000)
+    new_total_payment_with_costs = new_total_payment_pure + (costs * 10000)
+    
+    monthly_savings = current_monthly - new_monthly
+    total_savings = current_total_payment - new_total_payment_with_costs
+
     st.divider()
     
     if total_savings > 0:
         st.balloons()
         st.subheader("🎉 借り換えメリットがあります！")
         
-        # メリット総額の表示
         st.markdown(f"""
             <div class="result-card">
                 <p>総返済額の削減（諸費用引後）</p>
@@ -90,11 +79,10 @@ if st.button("📊 借り換えメリットを診断する", use_container_width
             </div>
         """, unsafe_allow_html=True)
 
-        # --- 追加：詳細比較テーブル ---
+        # --- 比較詳細テーブル ---
         st.write("### 📉 返済計画の比較詳細")
-        
-        comparison_data = {
-            "項目": ["毎月の返済額", "総返済額 (諸費用込)", "利息の総額", "諸費用"],
+        df_comp = pd.DataFrame({
+            "項目": ["毎月の返済額", "総支払額 (諸費用込)", "利息の総計", "諸費用"],
             "借り換え前": [
                 f"{round(current_monthly):,} 円",
                 f"{round(current_total_payment / 10000):,} 万円",
@@ -107,41 +95,27 @@ if st.button("📊 借り換えメリットを診断する", use_container_width
                 f"{round(new_total_interest / 10000):,} 万円",
                 f"{costs:,} 万円"
             ],
-            "差額": [
+            "削減額/差額": [
                 f"- {round(monthly_savings):,} 円",
                 f"- {round(total_savings / 10000):,} 万円",
                 f"- {round((current_total_interest - new_total_interest) / 10000):,} 万円",
                 f"+ {costs:,} 万円"
             ]
-        }
-        st.table(pd.DataFrame(comparison_data))
+        })
+        st.table(df_comp)
 
-        # --- 追加：利息削減のインパクト ---
-        interest_cut = round((current_total_interest - new_total_interest) / 10000)
-        st.info(f"📢 借り換えによって、銀行に支払う**利息を 約 {interest_cut:,} 万円 減らす**ことができます。")
-
-        # グラフ表示（積み上げ棒グラフにすると利息の差がわかりやすい）
-        chart_df = pd.DataFrame([
-            {"ケース": "現在", "内訳": "元金", "金額 (万円)": current_balance},
-            {"ケース": "現在", "内訳": "利息", "金額 (万円)": round(current_total_interest / 10000)},
-            {"ケース": "借り換え後", "内訳": "元金", "金額 (万円)": current_balance},
-            {"ケース": "借り換え後", "内訳": "利息", "金額 (万円)": round(new_total_interest / 10000)},
-            {"ケース": "借り換え後", "内訳": "諸費用", "金額 (万円)": costs},
-        ])
-        
+        # --- 視覚的な内訳グラフ ---
         st.write("### 📊 総支払額の内訳比較")
-        st.bar_chart(chart_df, x="ケース", y="金額 (万円)", color="内訳", stack=True)
+        chart_data = pd.DataFrame([
+            {"ケース": "現在", "内訳": "元金", "金額(万円)": current_balance},
+            {"ケース": "現在", "内訳": "利息", "金額(万円)": round(current_total_interest / 10000)},
+            {"ケース": "借り換え", "内訳": "元金", "金額(万円)": current_balance},
+            {"ケース": "借り換え", "内訳": "利息", "金額(万円)": round(new_total_interest / 10000)},
+            {"ケース": "借り換え", "内訳": "諸費用", "金額(万円)": costs},
+        ])
+        st.bar_chart(chart_data, x="ケース", y="金額(万円)", color="内訳", stack=True)
         
+        st.info(f"💡 利息だけで 約 **{round((current_total_interest - new_total_interest)/10000):,} 万円** の削減になります。")
+
     else:
         st.warning("⚠️ 現在の条件では、諸費用を含めると借り換えメリットが出ない可能性があります。")
-
-    # グラフ表示（比較）
-    chart_data = pd.DataFrame({
-        "項目": ["現在", "借り換え後"],
-        "総返済額 (万円)": [
-            round((current_monthly * remaining_months) / 10000),
-            round((new_monthly * remaining_months) / 10000 + costs)
-        ]
-    })
-
-    st.bar_chart(chart_data, x="項目", y="総返済額 (万円)")
