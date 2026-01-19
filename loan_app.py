@@ -121,11 +121,12 @@ if st.button("📊 借り換えメリットを診断する", use_container_width
             y="金額(万円)", 
             color="内訳", 
             stack=True, 
-            height=700
+            height=500
         )
 
         st.info(f"💡 借り換えにより、銀行へ支払う余分な利息が 約 **{round(interest_savings/10000):,} 万円** 削減されます。")
 
     else:
         st.warning("⚠️ 諸費用(手数料)の負担が削減額を上回るため、現時点での借り換えメリットは薄いと判断されます。")
+
 
