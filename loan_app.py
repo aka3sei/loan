@@ -61,14 +61,20 @@ with st.expander("✨ 借り換え後の条件を入力", expanded=True):
         costs = st.number_input("諸費用（手数料など） (万円)", min_value=0, max_value=500, value=60)
 
 # --- 4. 診断ロジック ---
-current_monthly = calculate_monthly_payment(current_balance * 10000, current_rate, remaining_months)
-new_monthly = calculate_monthly_payment(current_balance * 10000, new_rate, remaining_months)
+# 現在の条件
+current_total_payment = current_monthly * remaining_months
+current_total_interest = current_total_payment - (current_balance * 10000)
 
+# 借り換え後の条件
+new_total_payment_pure = new_monthly * remaining_months
+new_total_interest = new_total_payment_pure - (current_balance * 10000)
+new_total_payment_with_costs = new_total_payment_pure + (costs * 10000)
+
+# 削減額
 monthly_savings = current_monthly - new_monthly
-total_savings = (monthly_savings * remaining_months) - (costs * 10000)
+total_savings = current_total_payment - new_total_payment_with_costs
 
-# 診断ボタン
-st.write("")
+# --- 5. 診断結果の表示 ---
 if st.button("📊 借り換えメリットを診断する", use_container_width=True):
     st.divider()
     
@@ -83,13 +89,49 @@ if st.button("📊 借り換えメリットを診断する", use_container_width
                 <p class="savings-amount">約 {round(total_savings / 10000):,} 万円</p>
             </div>
         """, unsafe_allow_html=True)
+
+        # --- 追加：詳細比較テーブル ---
+        st.write("### 📉 返済計画の比較詳細")
         
-        # 詳細メトリクス
-        m1, m2 = st.columns(2)
-        m1.metric("毎月の返済軽減額", f"{round(monthly_savings):,} 円")
-        m2.metric("総削減額 (期間全体)", f"{round((monthly_savings * remaining_months)/10000):,} 万円")
+        comparison_data = {
+            "項目": ["毎月の返済額", "総返済額 (諸費用込)", "利息の総額", "諸費用"],
+            "借り換え前": [
+                f"{round(current_monthly):,} 円",
+                f"{round(current_total_payment / 10000):,} 万円",
+                f"{round(current_total_interest / 10000):,} 万円",
+                "0 万円"
+            ],
+            "借り換え後": [
+                f"{round(new_monthly):,} 円",
+                f"{round(new_total_payment_with_costs / 10000):,} 万円",
+                f"{round(new_total_interest / 10000):,} 万円",
+                f"{costs:,} 万円"
+            ],
+            "差額": [
+                f"- {round(monthly_savings):,} 円",
+                f"- {round(total_savings / 10000):,} 万円",
+                f"- {round((current_total_interest - new_total_interest) / 10000):,} 万円",
+                f"+ {costs:,} 万円"
+            ]
+        }
+        st.table(pd.DataFrame(comparison_data))
+
+        # --- 追加：利息削減のインパクト ---
+        interest_cut = round((current_total_interest - new_total_interest) / 10000)
+        st.info(f"📢 借り換えによって、銀行に支払う**利息を 約 {interest_cut:,} 万円 減らす**ことができます。")
+
+        # グラフ表示（積み上げ棒グラフにすると利息の差がわかりやすい）
+        chart_df = pd.DataFrame([
+            {"ケース": "現在", "内訳": "元金", "金額 (万円)": current_balance},
+            {"ケース": "現在", "内訳": "利息", "金額 (万円)": round(current_total_interest / 10000)},
+            {"ケース": "借り換え後", "内訳": "元金", "金額 (万円)": current_balance},
+            {"ケース": "借り換え後", "内訳": "利息", "金額 (万円)": round(new_total_interest / 10000)},
+            {"ケース": "借り換え後", "内訳": "諸費用", "金額 (万円)": costs},
+        ])
         
-        st.success(f"💡 毎月 {round(monthly_savings):,} 円、余裕が生まれます。")
+        st.write("### 📊 総支払額の内訳比較")
+        st.bar_chart(chart_df, x="ケース", y="金額 (万円)", color="内訳", stack=True)
+        
     else:
         st.warning("⚠️ 現在の条件では、諸費用を含めると借り換えメリットが出ない可能性があります。")
 
@@ -101,4 +143,5 @@ if st.button("📊 借り換えメリットを診断する", use_container_width
             round((new_monthly * remaining_months) / 10000 + costs)
         ]
     })
+
     st.bar_chart(chart_data, x="項目", y="総返済額 (万円)")
