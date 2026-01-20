@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 # --- 1. ページ設定とスタイル ---
-st.set_page_config(page_title="ローン借り換え診断", layout="centered")
+st.set_page_config(page_title="ローン借換診断", layout="centered")
 
 hide_st_style = """
     <style>
@@ -32,7 +32,7 @@ def calculate_monthly_payment(principal, annual_interest_rate, months):
     return principal * monthly_rate * (1 + monthly_rate)**months / ((1 + monthly_rate)**months - 1)
 
 # --- 3. メイン画面 ---
-st.title("🏦 ローン借り換え診断")
+st.title("🏦 ローン借換診断")
 
 with st.expander("📝 現在のローンの条件を入力", expanded=True):
     col1, col2 = st.columns(2)
@@ -128,6 +128,7 @@ if st.button("📊 借り換えメリットを診断する", use_container_width
 
     else:
         st.warning("⚠️ 諸費用(手数料)の負担が削減額を上回るため、現時点での借り換えメリットは薄いと判断されます。")
+
 
 
 
