@@ -38,7 +38,7 @@ with st.expander("📝 現在のローンの条件を入力", expanded=True):
     col1, col2 = st.columns(2)
     with col1:
         current_balance = st.number_input("ローン残高 (万円)", min_value=100, max_value=20000, value=3000, step=100)
-        current_rate = st.number_input("現在の金利 (%)", min_value=0.1, max_value=5.0, value=1.2, step=0.01, format="%.2f")
+        current_rate = st.number_input("現在の金利 (%)", min_value=0.1, max_value=15.0, value=1.2, step=0.01, format="%.2f")
     with col2:
         remaining_years = st.slider("残り期間 (年)", 1, 35, 20)
         remaining_months = remaining_years * 12
@@ -46,12 +46,12 @@ with st.expander("📝 現在のローンの条件を入力", expanded=True):
 with st.expander("✨ 借換後の条件を入力", expanded=True):
     col3, col4 = st.columns(2)
     with col3:
-        new_rate = st.number_input("借換後の金利 (%)", min_value=0.1, max_value=5.0, value=0.45, step=0.01, format="%.2f")
+        new_rate = st.number_input("借換後の金利 (%)", min_value=0.1, max_value=15.0, value=0.45, step=0.01, format="%.2f")
     with col4:
         costs = st.number_input("諸費用（手数料など） (万円)", min_value=0, max_value=500, value=60)
 
 # --- 4. 診断ロジック & 表示 ---
-if st.button("📊 借換メリットを診断する", use_container_width=True):
+if st.button("📊 診断する", use_container_width=True):
     # 計算処理（ボタン押下後に実行）
     current_monthly = calculate_monthly_payment(current_balance * 10000, current_rate, remaining_months)
     new_monthly = calculate_monthly_payment(current_balance * 10000, new_rate, remaining_months)
@@ -128,6 +128,7 @@ if st.button("📊 借換メリットを診断する", use_container_width=True)
 
     else:
         st.warning("⚠️ 諸費用(手数料)の負担が削減額を上回るため、現時点での借換メリットは薄いと判断されます。")
+
 
 
 
